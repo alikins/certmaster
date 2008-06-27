@@ -126,9 +126,11 @@ def _get_serial_number(cadir):
     # we start with a random number, and increment it from there
     # to give us plenty of room, we start somewhere between 0 and maxint/2
     # why? issuer+serial number needs to be unique, for revocation
-    
+
+
+    # note this setups a boundary on how many certs we can make, somewhere
+    # between mxint/2 and maxint. Thats a lot of certs though. -akl
     i = random.randint(0, (sys.maxint/2))
-    print i, serial
     if os.path.exists(serial):
         f = open(serial, 'r').read()
         f = f.replace('\n','')
@@ -138,7 +140,7 @@ def _get_serial_number(cadir):
         except ValueError, e:
             i = 1
 
-    print "i", i
+
     _set_serial_number(cadir, i)        
     return i
 
