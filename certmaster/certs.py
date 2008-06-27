@@ -19,12 +19,6 @@ import socket
 import os
 import utils
 
-def_country = 'UN'
-def_state = 'FC'
-def_local = 'Certmaster-town'
-def_org = 'certmaster'
-def_ou = 'slave-key'
-
 
 def make_keypair(dest=None):
     pkey = crypto.PKey()
@@ -41,11 +35,7 @@ def make_csr(pkey, dest=None, cn=None):
     req = crypto.X509Req()
     req.get_subject()
     subj  = req.get_subject()
-    subj.C = def_country
-    subj.ST = def_state
-    subj.L = def_local
-    subj.O = def_org
-    subj.OU = def_ou
+
     if cn:
         subj.CN = cn
     else:
@@ -83,16 +73,45 @@ def retrieve_cert_from_file(certfile):
     return cert
 
 
+def create_extensions(extensions):
+    xextlist = []
+    for name, critical, value in extensions:
+        print name, critical, value
+        xext = crypto.X509Extension(name, critical, value)
+        xextlist.append(xext)
+
+    return xextlist
+
+def create_ca_extensions():
+    extensions = [
+        ("nsCertType", 0, "objsign"),
+        ("basicConstraints", 1, "CA:TRUE")
+        ]
+
+    return create_extensions(extensions)
+
+def create_slave_extensions():
+    extensions = [
+        ("nsCertType", 0, "client,server"),
+        ("basicConstraints", 1, "CA:FALSE")
+        ]
+
+    return create_extensions(extensions)
+
+
 def create_ca(CN="Certmaster Certificate Authority", ca_key_file=None, ca_cert_file=None):
     cakey = make_keypair(dest=ca_key_file)
     careq = make_csr(cakey, cn=CN)
     cacert = crypto.X509()
-    cacert.set_serial_number(0)
+
+
     cacert.gmtime_adj_notBefore(0)
     cacert.gmtime_adj_notAfter(60*60*24*365*10) # 10 yrs - hard to beat this kind of cert!
     cacert.set_issuer(careq.get_subject())
     cacert.set_subject(careq.get_subject())
+    cacert.set_serial_number(cacert.subject_name_hash())
     cacert.set_pubkey(careq.get_pubkey())
+#    cacert.add_extensions(create_ca_extensions())
     cacert.sign(cakey, 'md5')
     if ca_cert_file:
         destfo = open(ca_cert_file, 'w')
@@ -131,6 +150,7 @@ def create_slave_certificate(csr, cakey, cacert, cadir, slave_cert_file=None):
     cert.set_issuer(cacert.get_subject())
     cert.set_subject(csr.get_subject())
     cert.set_pubkey(csr.get_pubkey())
+#    cert.add_extensions(create_slave_extensions())
     cert.sign(cakey, 'md5')
     if slave_cert_file:
         destfo = open(slave_cert_file, 'w')
