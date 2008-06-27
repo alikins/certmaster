@@ -112,7 +112,7 @@ def create_ca(CN="Certmaster Certificate Authority", ca_key_file=None, ca_cert_f
     cacert.set_serial_number(cacert.subject_name_hash())
     cacert.set_pubkey(careq.get_pubkey())
 #    cacert.add_extensions(create_ca_extensions())
-    cacert.sign(cakey, 'md5')
+    cacert.sign(cakey, 'sha1')
     if ca_cert_file:
         destfo = open(ca_cert_file, 'w')
         destfo.write(crypto.dump_certificate(crypto.FILETYPE_PEM, cacert))
