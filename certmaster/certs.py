@@ -18,7 +18,8 @@ from OpenSSL import crypto
 import socket
 import os
 import utils
-
+import random
+import sys
 
 def make_keypair(dest=None):
     pkey = crypto.PKey()
@@ -99,7 +100,7 @@ def create_slave_extensions():
     return create_extensions(extensions)
 
 
-def create_ca(CN="Certmaster Certificate Authority", ca_key_file=None, ca_cert_file=None):
+def create_ca(CN="Certmaster Certificate Authority", ca_key_file=None, ca_cert_file=None, ca_dir=None):
     cakey = make_keypair(dest=ca_key_file)
     careq = make_csr(cakey, cn=CN)
     cacert = crypto.X509()
@@ -109,7 +110,7 @@ def create_ca(CN="Certmaster Certificate Authority", ca_key_file=None, ca_cert_f
     cacert.gmtime_adj_notAfter(60*60*24*365*10) # 10 yrs - hard to beat this kind of cert!
     cacert.set_issuer(careq.get_subject())
     cacert.set_subject(careq.get_subject())
-    cacert.set_serial_number(cacert.subject_name_hash())
+    cacert.set_serial_number(_get_serial_number(ca_dir))
     cacert.set_pubkey(careq.get_pubkey())
 #    cacert.add_extensions(create_ca_extensions())
     cacert.sign(cakey, 'sha1')
@@ -121,7 +122,13 @@ def create_ca(CN="Certmaster Certificate Authority", ca_key_file=None, ca_cert_f
                                            
 def _get_serial_number(cadir):
     serial = '%s/serial.txt' % cadir
-    i = 1
+
+    # we start with a random number, and increment it from there
+    # to give us plenty of room, we start somewhere between 0 and maxint/2
+    # why? issuer+serial number needs to be unique, for revocation
+    
+    i = random.randint(0, (sys.maxint/2))
+    print i, serial
     if os.path.exists(serial):
         f = open(serial, 'r').read()
         f = f.replace('\n','')
@@ -130,7 +137,8 @@ def _get_serial_number(cadir):
             i+=1      
         except ValueError, e:
             i = 1
-            
+
+    print "i", i
     _set_serial_number(cadir, i)        
     return i
 
